@@ -33,12 +33,13 @@ defmodule Livebook.Application do
         # Start the unique task dependencies
         Livebook.Utils.UniqueTask
       ] ++
+        app_pre_specs() ++
         iframe_server_specs() ++
         [
           # Start the Endpoint (http/https)
           # We skip the access url as we do our own logging below
           {LivebookWeb.Endpoint, log_access_url: false}
-        ] ++ app_specs()
+        ] ++ app_post_specs()
 
     opts = [strategy: :one_for_one, name: Livebook.Supervisor]
 
@@ -185,9 +186,11 @@ defmodule Livebook.Application do
   defp config_env_var?(_), do: false
 
   if Mix.target() == :app do
-    defp app_specs, do: [LivebookApp]
+    defp app_pre_specs, do: [LivebookApp.Preboot]
+    defp app_post_specs, do: [LivebookApp]
   else
-    defp app_specs, do: []
+    defp app_pre_specs, do: []
+    defp app_post_specs, do: []
   end
 
   defp iframe_server_specs() do

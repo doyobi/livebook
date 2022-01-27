@@ -6,11 +6,48 @@ defmodule WxDemo.Application do
   @impl true
   def start(_type, _args) do
     children = [
+      WxDemo.Preboot,
       WxDemo.Window
     ]
 
     opts = [strategy: :one_for_one, name: WxDemo.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+end
+
+defmodule WxDemo.Preboot do
+  use GenServer
+
+  def start_link(_) do
+    GenServer.start_link(__MODULE__, nil)
+  end
+
+  @impl true
+  def init(_) do
+    if node = find_running_node() do
+      IO.inspect(node)
+      Node.spawn_link(node, fn ->
+        send(WxDemo.Window, {:new_instance, System.argv()})
+      end)
+
+      System.stop()
+      {:stop, :shutdown}
+    else
+      {:ok, nil}
+    end
+  end
+
+  defp find_running_node do
+    server = :"windows_installer@#{:net_adm.localhost()}"
+
+    case :net_adm.ping(server) do
+      :pong ->
+        server
+        nil
+
+      :pang ->
+        nil
+    end
   end
 end
 
@@ -24,6 +61,7 @@ defmodule WxDemo.Window do
 
   def start_link(_) do
     {:wx_ref, _, _, pid} = :wx_object.start_link(__MODULE__, [], [])
+    true = Process.register(pid, __MODULE__)
     {:ok, pid}
   end
 
@@ -40,16 +78,20 @@ defmodule WxDemo.Window do
     title = "WxDemo"
 
     wx = :wx.new()
-    frame = :wxFrame.new(wx, -1, title)
+    frame = :wxFrame.new(wx, -1, title, size: {100, 100})
 
-    if macOS?() do
+    if macos?() do
       fixup_macos_menubar(frame, title)
     end
 
     :wxFrame.show(frame)
     :wxFrame.connect(frame, :command_menu_selected)
     :wxFrame.connect(frame, :close_window, skip: true)
-    :wx.subscribe_events()
+
+    if macos?() do
+      :wx.subscribe_events()
+    end
+
     state = %{frame: frame}
     {frame, state}
   end
@@ -65,6 +107,16 @@ defmodule WxDemo.Window do
     :init.stop()
     {:stop, :shutdown, state}
   end
+
+  ## preboot messages
+
+  @impl true
+  def handle_info({:new_instance, argv}, state) do
+    IO.inspect [new_instance: argv]
+    {:noreply, state}
+  end
+
+  ## wx messages
 
   @impl true
   def handle_info({:open_url, url}, state) do
@@ -98,7 +150,7 @@ defmodule WxDemo.Window do
     end
   end
 
-  defp macOS?() do
+  defp macos?() do
     :os.type() == {:unix, :darwin}
   end
 end
