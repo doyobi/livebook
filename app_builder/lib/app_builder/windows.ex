@@ -16,6 +16,7 @@ defmodule AppBuilder.Windows do
 
     options =
       Keyword.validate!(options, [
+        :module,
         :name,
         :version,
         :url_schemes,
@@ -118,7 +119,7 @@ defmodule AppBuilder.Windows do
 
   EEx.function_from_string(:defp, :nsi, code, [:options], trim: true)
 
-  code = """
+  code = ~S"""
   ' This vbs script avoids a flashing cmd window when launching the release bat file
 
   strPath = Left(Wscript.ScriptFullName, Len(Wscript.ScriptFullName) - Len(Wscript.ScriptName)) & "rel\\bin\\<%= release.name %>.bat"
@@ -131,8 +132,17 @@ defmodule AppBuilder.Windows do
     WshSystemEnv("<%= String.upcase(Keyword.fetch!(options, :name)) <> "_ARGV0" %>") = WScript.Arguments(0)
   End If
 
-  ExitCode = WshShell.Run(\"""" & strPath & \""" rpc WxDemo.Window.connected", 0, True)
-  ExitCode = WshShell.Run(\"""" & strPath & \""" start", 0)
+  ' Below we run two commands:
+  ' 1. `bin/release rpc Module.connected`
+  ' 2. `bin/release start`
+  ' If first succeeded, it means the release is already running so we don't run the second one.
+
+  ExitCode = WshShell.Run(\"""" & strPath & \""" rpc #{inspect(Keyword.fetch!(options, :module)}.connected", 0, True)
+  MsgBox(ExitCode)
+
+  If ExitCode <> 0 Then
+    ExitCode = WshShell.Run(\"""" & strPath & \""" start", 0)
+  End If
 
   Set WshShell = Nothing
   """

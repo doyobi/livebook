@@ -42,7 +42,10 @@ defmodule WxDemo.MixProject do
       ],
       windows_installer: [
         include_executables_for: [:windows],
-        steps: [:assemble, &AppBuilder.build_windows_installer(&1, options)]
+        steps: [
+          :assemble,
+          &AppBuilder.build_windows_installer(&1, [module: WxDemo.Window] ++ options)
+        ]
       ]
     ]
   end
