@@ -33,7 +33,7 @@ defmodule AppBuilder.Windows do
     ensure_rcedit(rcedit_path)
     cmd!(rcedit_path, ["--set-icon", app_icon_path, Path.join([erts_dir, "bin", "erl.exe"])])
 
-    File.write!(Path.join(tmp_dir, "#{app_name}.vbs"), launcher(release))
+    File.write!(Path.join(tmp_dir, "#{app_name}.vbs"), launcher_vbs(release, options))
     nsi_path = Path.join(tmp_dir, "#{app_name}.nsi")
     File.write!(nsi_path, nsi(options))
     cmd!("makensis", [nsi_path])
@@ -119,25 +119,25 @@ defmodule AppBuilder.Windows do
   EEx.function_from_string(:defp, :nsi, code, [:options], trim: true)
 
   code = """
-  ' This avoids a flashing cmd window when launching the bat file
+  ' This vbs script avoids a flashing cmd window when launching the release bat file
+
   strPath = Left(Wscript.ScriptFullName, Len(Wscript.ScriptFullName) - Len(Wscript.ScriptName)) & "rel\\bin\\<%= release.name %>.bat"
   ' MsgBox(strPath)
 
-  Dim Args()
-  ReDim Args(WScript.Arguments.Count - 1)
+  Set WshShell = CreateObject("WScript.Shell")
 
-  For i = 0 To WScript.Arguments.Count - 1
-     Args(i) = \"""" & WScript.Arguments(i) & \""""
-  Next
+  If WScript.Arguments.Count > 0 Then
+    Set WshSystemEnv = wshShell.Environment("Process")
+    WshSystemEnv("<%= String.upcase(Keyword.fetch!(options, :name)) <> "_ARGV0" %>") = WScript.Arguments(0)
+  End If
 
-  Set WshShell = CreateObject("WScript.Shell" )
-  Set WshSystemEnv = wshShell.Environment( "Process" )
-  WshSystemEnv("RELEASE_COOKIE") = "TODO"
-  WshShell.Run \"""" & strPath & \""" start -- " & Join(Args), 0
+  ExitCode = WshShell.Run(\"""" & strPath & \""" rpc WxDemo.Window.connected", 0, True)
+  ExitCode = WshShell.Run(\"""" & strPath & \""" start", 0)
+
   Set WshShell = Nothing
   """
 
-  EEx.function_from_string(:defp, :launcher, code, [:release], trim: true)
+  EEx.function_from_string(:defp, :launcher_vbs, code, [:release, :options], trim: true)
 
   # Use https://github.com/elixir-desktop/libpe when fixed
   defp ensure_rcedit(path) do

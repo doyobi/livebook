@@ -6,48 +6,11 @@ defmodule WxDemo.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      WxDemo.Preboot,
       WxDemo.Window
     ]
 
     opts = [strategy: :one_for_one, name: WxDemo.Supervisor]
     Supervisor.start_link(children, opts)
-  end
-end
-
-defmodule WxDemo.Preboot do
-  use GenServer
-
-  def start_link(_) do
-    GenServer.start_link(__MODULE__, nil)
-  end
-
-  @impl true
-  def init(_) do
-    if node = find_running_node() do
-      IO.inspect(node)
-      Node.spawn_link(node, fn ->
-        send(WxDemo.Window, {:new_instance, System.argv()})
-      end)
-
-      System.stop()
-      {:stop, :shutdown}
-    else
-      {:ok, nil}
-    end
-  end
-
-  defp find_running_node do
-    server = :"windows_installer@#{:net_adm.localhost()}"
-
-    case :net_adm.ping(server) do
-      :pong ->
-        server
-        nil
-
-      :pang ->
-        nil
-    end
   end
 end
 
@@ -73,6 +36,10 @@ defmodule WxDemo.Window do
     }
   end
 
+  def connected do
+    send(__MODULE__, :connected)
+  end
+
   @impl true
   def init(_) do
     title = "WxDemo"
@@ -93,6 +60,11 @@ defmodule WxDemo.Window do
     end
 
     state = %{frame: frame}
+
+    if url = System.get_env("WXDEMO_ARGV0") do
+      open(state, url)
+    end
+
     {frame, state}
   end
 
@@ -108,11 +80,16 @@ defmodule WxDemo.Window do
     {:stop, :shutdown, state}
   end
 
-  ## preboot messages
+  ## app messages
 
   @impl true
-  def handle_info({:new_instance, argv}, state) do
-    IO.inspect [new_instance: argv]
+  def handle_info(:connected, state) do
+    if url = System.get_env("WXDEMO_ARGV0") do
+      open(state, "connected: #{url}")
+    else
+      open(state, "connected")
+    end
+
     {:noreply, state}
   end
 
@@ -120,9 +97,7 @@ defmodule WxDemo.Window do
 
   @impl true
   def handle_info({:open_url, url}, state) do
-    :wxMessageDialog.new(state.frame, inspect(url))
-    |> :wxDialog.showModal()
-
+    open(state, url)
     {:noreply, state}
   end
 
@@ -130,6 +105,17 @@ defmodule WxDemo.Window do
   # ignore other events
   def handle_info(_event, state) do
     {:noreply, state}
+  end
+
+  ## Private
+
+  defp open(state, url) do
+    show_dialog(state, inspect(url))
+  end
+
+  defp show_dialog(state, data) do
+    :wxMessageDialog.new(state.frame, data)
+    |> :wxDialog.showModal()
   end
 
   defp fixup_macos_menubar(frame, title) do
