@@ -36,8 +36,8 @@ defmodule WxDemo.Window do
     }
   end
 
-  def connected do
-    send(__MODULE__, :connected)
+  def connected(argv1) do
+    send(__MODULE__, {:connected, argv1})
   end
 
   @impl true
@@ -83,13 +83,8 @@ defmodule WxDemo.Window do
   ## app messages
 
   @impl true
-  def handle_info(:connected, state) do
-    if url = System.get_env("WXDEMO_ARGV0") do
-      open(state, "connected: #{url}")
-    else
-      open(state, "connected")
-    end
-
+  def handle_info({:connected, url}, state) do
+    open_url(state, "connected: #{url}")
     {:noreply, state}
   end
 
@@ -109,7 +104,7 @@ defmodule WxDemo.Window do
 
   ## Private
 
-  defp open(state, url) do
+  defp open_url(state, url) do
     show_dialog(state, inspect(url))
   end
 

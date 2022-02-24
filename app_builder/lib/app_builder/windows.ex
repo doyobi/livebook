@@ -129,15 +129,15 @@ defmodule AppBuilder.Windows do
 
   If WScript.Arguments.Count > 0 Then
     Set WshSystemEnv = wshShell.Environment("Process")
-    WshSystemEnv("<%= String.upcase(Keyword.fetch!(options, :name)) <> "_ARGV0" %>") = WScript.Arguments(0)
+    WshSystemEnv("<%= String.upcase(Keyword.fetch!(options, :name)) <> "_ARGV1" %>") = WScript.Arguments(0)
   End If
 
   ' Below we run two commands:
-  ' 1. `bin/release rpc Module.connected`
+  ' 1. `bin/release rpc "Module.connected(argv1)"`
   ' 2. `bin/release start`
   ' If first succeeded, it means the release is already running so we don't run the second one.
 
-  ExitCode = WshShell.Run(\"""" & strPath & \""" rpc #{inspect(Keyword.fetch!(options, :module)}.connected", 0, True)
+  ExitCode = WshShell.Run(\"""" & strPath & \""" rpc #{inspect(Keyword.fetch!(options, :module)}.connected(String.trim(IO.read(:line)))", 0, True)
   MsgBox(ExitCode)
 
   If ExitCode <> 0 Then
