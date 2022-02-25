@@ -37,7 +37,7 @@ defmodule WxDemo.Window do
   end
 
   def connected(url) do
-    url = url |> String.trim_leading("\"") |> String.trim_trailing("\"\n")
+    url = url |> String.trim() |> String.trim_leading("\"") |> String.trim_trailing("\"")
     send(__MODULE__, {:connected, url})
   end
 

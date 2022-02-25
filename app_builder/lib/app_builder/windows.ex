@@ -9,7 +9,7 @@ defmodule AppBuilder.Windows do
   """
   def build_windows_installer(release, options) do
     tmp_dir = release.path <> "_tmp"
-    File.rm_rf!(tmp_dir)
+    File.rm_rf(tmp_dir)
     File.mkdir_p!(tmp_dir)
 
     File.cp_r!(release.path, Path.join(tmp_dir, "rel"))
@@ -122,7 +122,7 @@ defmodule AppBuilder.Windows do
   code = ~S"""
   ' This vbs script avoids a flashing cmd window when launching the release bat file
 
-  path = Left(Wscript.ScriptFullName, Len(Wscript.ScriptFullName) - Len(Wscript.ScriptName)) & "rel\\bin\\<%= release.name %>.bat"
+  path = Left(Wscript.ScriptFullName, Len(Wscript.ScriptFullName) - Len(Wscript.ScriptName)) & "rel\bin\<%= release.name %>.bat"
 
   If WScript.Arguments.Count > 0 Then
     url = WScript.Arguments(0)
@@ -143,11 +143,11 @@ defmodule AppBuilder.Windows do
   ' > bin/release rpc "mod.connected(url)"
   '
   ' We send the URL through IO, as opposed through the rpc expression, to avoid RCE.
-  cmd = "echo """ & url & """ | " & strPath & """ rpc <%= Keyword.fetch!(options, :module) %>.connected(String.trim(IO.read(:line)))"
-  code = WshShell.Run("cmd /c " & cmd, 0)
+  cmd = "echo """ & url & """ | """ & path & """ rpc <%= inspect(Keyword.fetch!(options, :module)) %>.connected(IO.read(:line))"
+  code = shell.Run("cmd /c " & cmd, 0)
 
   ' > APP_URL=url bin/release start
-  cmd = """" & strPath & """ start"
+  cmd = """" & path & """ start"
   Set env = shell.Environment("Process")
   env("<%= String.upcase(Keyword.fetch!(options, :name)) <> "_URL" %>") = url
   code = shell.Run(cmd, 0)
