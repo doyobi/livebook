@@ -122,29 +122,35 @@ defmodule AppBuilder.Windows do
   code = ~S"""
   ' This vbs script avoids a flashing cmd window when launching the release bat file
 
-  strPath = Left(Wscript.ScriptFullName, Len(Wscript.ScriptFullName) - Len(Wscript.ScriptName)) & "rel\\bin\\<%= release.name %>.bat"
-  ' MsgBox(strPath)
-
-  Set WshShell = CreateObject("WScript.Shell")
+  path = Left(Wscript.ScriptFullName, Len(Wscript.ScriptFullName) - Len(Wscript.ScriptName)) & "rel\\bin\\<%= release.name %>.bat"
 
   If WScript.Arguments.Count > 0 Then
-    Set WshSystemEnv = wshShell.Environment("Process")
-    WshSystemEnv("<%= String.upcase(Keyword.fetch!(options, :name)) <> "_ARGV1" %>") = WScript.Arguments(0)
+    url = WScript.Arguments(0)
+  Else
+    url = ""
   End If
+
+  Set shell = CreateObject("WScript.Shell")
 
   ' Below we run two commands:
-  ' 1. `bin/release rpc "Module.connected(argv1)"`
-  ' 2. `bin/release start`
-  ' If first succeeded, it means the release is already running so we don't run the second one.
+  '
+  '   1. bin/release rpc
+  '   2. bin/release start
+  '
+  ' The first one will only succeed when the app is already running. The second one when it is not.
+  ' It's ok for either to fail because we run them asynchronously.
 
-  ExitCode = WshShell.Run(\"""" & strPath & \""" rpc #{inspect(Keyword.fetch!(options, :module)}.connected(String.trim(IO.read(:line)))", 0, True)
-  MsgBox(ExitCode)
+  ' > bin/release rpc "mod.connected(url)"
+  '
+  ' We send the URL through IO, as opposed through the rpc expression, to avoid RCE.
+  cmd = "echo """ & url & """ | " & strPath & """ rpc <%= Keyword.fetch!(options, :module) %>.connected(String.trim(IO.read(:line)))"
+  code = WshShell.Run("cmd /c " & cmd, 0)
 
-  If ExitCode <> 0 Then
-    ExitCode = WshShell.Run(\"""" & strPath & \""" start", 0)
-  End If
-
-  Set WshShell = Nothing
+  ' > APP_URL=url bin/release start
+  cmd = """" & strPath & """ start"
+  Set env = shell.Environment("Process")
+  env("<%= String.upcase(Keyword.fetch!(options, :name)) <> "_URL" %>") = url
+  code = shell.Run(cmd, 0)
   """
 
   EEx.function_from_string(:defp, :launcher_vbs, code, [:release, :options], trim: true)

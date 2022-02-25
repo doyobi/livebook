@@ -36,8 +36,9 @@ defmodule WxDemo.Window do
     }
   end
 
-  def connected(argv1) do
-    send(__MODULE__, {:connected, argv1})
+  def connected(url) do
+    url = url |> String.trim_leading("\"") |> String.trim_trailing("\"\n")
+    send(__MODULE__, {:connected, url})
   end
 
   @impl true
@@ -61,8 +62,8 @@ defmodule WxDemo.Window do
 
     state = %{frame: frame}
 
-    if url = System.get_env("WXDEMO_ARGV0") do
-      open(state, url)
+    if url = System.get_env("WXDEMO_URL") do
+      open_url(state, "init: #{url}")
     end
 
     {frame, state}
@@ -92,7 +93,7 @@ defmodule WxDemo.Window do
 
   @impl true
   def handle_info({:open_url, url}, state) do
-    open(state, url)
+    open_url(state, url)
     {:noreply, state}
   end
 
