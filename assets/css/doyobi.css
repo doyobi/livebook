@@ -1,7 +1,9 @@
-[data-edit-mode='false'] [data-element='elixir-editor'],
-[data-edit-mode='false'] [data-element='section-actions'],
-[data-edit-mode='false'] [data-element='insert-buttons'],
-[data-edit-mode='false'] [data-element='actions']
-{
-  @apply hidden;
+@layer components {
+  [data-edit-mode='false'] [data-element='elixir-editor'],
+  [data-edit-mode='false'] [data-element='section-actions'],
+  [data-edit-mode='false'] [data-element='insert-buttons'],
+  [data-edit-mode='false'] [data-element='actions']
+  {
+    @apply hidden;
+  }
 }
