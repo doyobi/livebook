@@ -236,7 +236,7 @@ defmodule LivebookWeb.SessionLive.CellComponent do
 
   defp editor(assigns) do
     ~H"""
-    <div class="relative">
+    <div class="relative" data-element="elixir-editor">
       <div id={"editor-#{@cell_view.id}"} phx-update="ignore">
         <div class="py-3 rounded-lg bg-editor" data-element="editor-container">
           <div class="px-8">

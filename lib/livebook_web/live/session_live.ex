@@ -48,6 +48,7 @@ defmodule LivebookWeb.SessionLive do
          socket
          |> assign(
            session: session,
+           edit_mode: false,
            platform: platform,
            self: self(),
            data_view: data_to_view(data),
@@ -135,7 +136,27 @@ defmodule LivebookWeb.SessionLive do
           <.runtime_info data_view={@data_view} session={@session} socket={@socket} empty_default_runtime={@empty_default_runtime} />
         </div>
       </div>
-      <div class="grow overflow-y-auto relative" data-element="notebook">
+
+      <div class="grow overflow-y-auto relative" data-element="notebook" data-edit-mode={ "#{@edit_mode}" }>
+
+        <%# Read/Edit Toggle %>
+        <div class="sticky top-0 flex justify-end p-2">
+          <!-- This example requires Tailwind CSS v2.0+ -->
+          <div class="flex items-center space-x-2">
+            <span class="ml-3" id="annual-billing-label">
+              <span class="text-sm font-medium text-gray-900">Read</span>
+            </span>
+            <!-- Enabled: "bg-indigo-600", Not Enabled: "bg-gray-200" -->
+              <button type="button" class={ "relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 #{if @edit_mode, do: 'bg-indigo-600', else: 'bg-gray-200' }" } role="switch" aria-checked="false" aria-labelledby="annual-billing-label" phx-click="toggle-mode">
+              <!-- Enabled: "translate-x-5", Not Enabled: "translate-x-0" -->
+                <span aria-hidden="true" class={ "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200 #{if @edit_mode, do: 'translate-x-5', else: 'translate-x-0' }" }></span>
+            </button>
+            <span class="ml-3" id="annual-billing-label">
+              <span class="text-sm font-medium text-gray-900">Edit</span>
+            </span>
+          </div>
+        </div>
+
         <div data-element="output-iframes" phx-update="ignore" id="output-iframes"></div>
         <div class="w-full max-w-screen-lg px-16 mx-auto py-7" data-element="notebook-content">
           <div class="flex items-center pb-4 mb-6 space-x-4 border-b border-gray-200"
@@ -579,6 +600,11 @@ defmodule LivebookWeb.SessionLive do
   end
 
   @impl true
+  def handle_event("toggle-mode", %{}, socket) do
+    socket = assign(socket, edit_mode: !socket.assigns.edit_mode)
+    {:noreply, socket}
+  end
+
   def handle_event("append_section", %{}, socket) do
     idx = length(socket.private.data.notebook.sections)
     Session.insert_section(socket.assigns.session.pid, idx)
